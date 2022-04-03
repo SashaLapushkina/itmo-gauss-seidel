@@ -9,7 +9,8 @@ public class GaussSeidel {
     private double[][] matrix; //коэффициенты
     private double[] solution;
     private int count; //кол-во итераций
-    private final double accuracy = 1E-1;
+    private final double accuracy = 1E-5;
+    private final int monotony = 5;
 
     //выделение памяти под массив
     private void create(int n, int m) {
@@ -50,23 +51,66 @@ public class GaussSeidel {
     }
 
     //расчет решения
-    public int resolve() {
+    public boolean resolve(boolean SCC) {
         System.out.println("Решения:");
         double difference = iterate();
-        for (int i = 1; i < count; i++) {
-            double newDifference = iterate();
-            if (newDifference > difference) { //проверяем монотонное убывание на каждом шаге (?)
-                return 2;
+        if (SCC) { //если ДУС выполняется
+            while (difference > accuracy) { //выполняем итерации, пока не добьемся нужной точности
+                difference = iterate();
             }
-            if (newDifference < accuracy) { //выходим из цикла, если добились нужной точности (?)
-                return 0;
+            return true;
+        } else { //если ДУС не выполняется
+            int decrease = 0;
+            for (int i = 1; i < count; i++) {
+                double newDifference = iterate();
+                if (newDifference > difference) { //проверяем монотонное убывание на каждом шаге
+                    decrease++;
+                } else {
+                    decrease = 0;
+                }
+                if (newDifference < accuracy) { //выходим из цикла, если добились нужной точности
+                    return true;
+                }
+                difference = newDifference;
             }
-            difference = newDifference;
+            if (decrease < monotony) { //если монотонность не замечена
+                System.out.println("Метод расходится:");
+                return false;
+            } else { //если есть монотонность
+                while (difference > accuracy) { //выполняем итерации, пока не добьемся нужной точности
+                    difference = iterate();
+                }
+                return true;
+            }
         }
-        while (difference > accuracy) {
-            difference = iterate();
+    }
+
+    //проверка наличия 0 на главное диагонали
+    public boolean checkZero() {
+        int i = 0;
+        while (matrix[i][i] != 0 && i < n) {
+            i++;
         }
-        return 0;
+        return i < n;
+    }
+
+    //проверка матрицы на ДУС
+    public boolean checkSCC() {
+        boolean strictSCC = false;
+        boolean SCC = true;
+        int k = 0;
+        while (SCC && k < n) {
+            double sum = 0;
+            for (int i = 0; i < n; i++) {
+                if (i != k) {
+                    sum += matrix[k][i];
+                }
+            }
+            if (matrix[k][k] > sum) strictSCC = true; //выполнился строгий ДУС
+            if (sum > matrix[k][k]) SCC = false; //ДУС не выполнился
+            k++;
+        }
+        return strictSCC & SCC;
     }
 
     //итерация поиска решения
@@ -86,7 +130,7 @@ public class GaussSeidel {
     }
 
     //выразить переменную
-    private double solveVariable(int index){
+    private double solveVariable(int index) {
         double sum = 0;
         for (int i = 0; i < n; i++) {
             if (i != index)
@@ -96,41 +140,8 @@ public class GaussSeidel {
     }
 
     //привести матрицу к диагональному преобладанию
-    public int diagonal() {
-        for (int i = 0; i < n; i++) { //сверху вниз
-            if (matrix[i][i] == 0) { //если на диагонали 0
-                int row = findTransposition(i);
-                if (row == -1) return 1;
-                else swap(i, row);
-            }
-        }
-        return 0;
-    }
+    public void changeDiagonal(int start) {
 
-    //найти перестановку в соответствии с ДУС
-    private int findTransposition(int start) {
-        int flag = -1;
-        for (int i = start + 1; i < n; i++) {
-            if (matrix[i][start] != 0) {
-                if (checkSCC(i, start))
-                    return i;
-                else flag = i;
-            }
-        }
-        return flag;
-    }
-
-    //проверить строку на ДУС
-    private boolean checkSCC(int row, int main) {
-        double sum = 0;
-        for (int i = 0; i < n; i++) {
-            if (i != main) {
-                if (matrix[row][i] > matrix[row][main])
-                    return false;
-                else sum += matrix[row][i];
-            }
-        }
-        return matrix[row][main] > sum;
     }
 
     //модуль числа
@@ -140,10 +151,10 @@ public class GaussSeidel {
 
     //поменять местами строки a и b
     private void swap(int a, int b) {
-        for (int i = 0; i < m; i++) {
-            double temp = matrix[a][i];
-            matrix[a][i] = matrix[b][i];
-            matrix[b][i] = temp;
+        if (a != b) {
+            double[] temp = matrix[a];
+            matrix[a] = matrix[b];
+            matrix[b] = temp;
         }
     }
 

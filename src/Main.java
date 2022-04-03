@@ -14,17 +14,14 @@ public class Main {
 
         System.out.println("Система:");
         gaussSeidel.print();
-        int code = gaussSeidel.diagonal();
-        if (code == 1) System.out.println("Невозможно решить итерационным методом");
-        else {
-            System.out.println("Система после перестановок:");
+        boolean zero = gaussSeidel.checkZero();
+        if (zero) {
+            gaussSeidel.changeDiagonal(0);
+            System.out.println("Измененная система:");
             gaussSeidel.print();
-            code = gaussSeidel.resolve();
-            if (code == 2) System.out.println("Метод расходится");
-            else {
-                System.out.print("Ответ: ");
-                gaussSeidel.solution();
-            }
+        } else {
+
         }
+        gaussSeidel.resolve(zero);
     }
 }
