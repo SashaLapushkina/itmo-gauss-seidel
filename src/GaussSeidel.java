@@ -10,6 +10,7 @@ public class GaussSeidel {
     private double[] solution;
     private int count; //кол-во итераций
     private final double accuracy = 1E-1;
+    private boolean SCC = true;
 
     //выделение памяти под массив
     private void create(int n, int m) {
@@ -63,7 +64,7 @@ public class GaussSeidel {
             }
             difference = newDifference;
         }
-        while (difference > accuracy) {
+        while (SCC && difference > accuracy) {
             difference = iterate();
         }
         return 0;
@@ -110,13 +111,14 @@ public class GaussSeidel {
     //найти перестановку в соответствии с ДУС
     private int findTransposition(int start) {
         int flag = -1;
-        for (int i = start + 1; i < n; i++) {
+        for (int i = start; i < n; i++) {
             if (matrix[i][start] != 0) {
                 if (checkSCC(i, start))
                     return i;
                 else flag = i;
             }
         }
+        SCC = false;
         return flag;
     }
 
@@ -130,7 +132,7 @@ public class GaussSeidel {
                 else sum += matrix[row][i];
             }
         }
-        return matrix[row][main] > sum;
+        return matrix[row][main] >= sum;
     }
 
     //модуль числа
@@ -140,11 +142,12 @@ public class GaussSeidel {
 
     //поменять местами строки a и b
     private void swap(int a, int b) {
-        for (int i = 0; i < m; i++) {
-            double temp = matrix[a][i];
-            matrix[a][i] = matrix[b][i];
-            matrix[b][i] = temp;
-        }
+        if (a != b)
+            for (int i = 0; i < m; i++) {
+                double temp = matrix[a][i];
+                matrix[a][i] = matrix[b][i];
+                matrix[b][i] = temp;
+            }
     }
 
     //вывод решения
