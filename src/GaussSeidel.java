@@ -9,6 +9,7 @@ public class GaussSeidel {
     private double[][] matrix; //коэффициенты
     private double[] solution;
     private int[] order;
+    private double[] sums;
     private static final double EPS = 1E-3;
 
     //выделение памяти под массив
@@ -38,10 +39,16 @@ public class GaussSeidel {
         for (int i = 0; i < n; i++) {
             order[i] = i;
         }
+        sums = new double[n];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                sums[i] += Math.abs(matrix[i][j]);
+            }
+        }
         scan.close();
     }
 
-    private double get(int i, int j){
+    private double get(int i, int j) {
         return matrix[order[i]][j];
     }
 
@@ -49,7 +56,7 @@ public class GaussSeidel {
     public void print() {
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) {
-                System.out.printf("%15.6E", get(i ,j));
+                System.out.printf("%15.6E", get(i, j));
             }
             System.out.println();
         }
@@ -58,7 +65,7 @@ public class GaussSeidel {
     //проверяем нули на главной диагонали
     public boolean areThereZerosOnDiagonal() {
         for (int i = 0; i < n; i++) {
-            if (Math.abs(get(i ,i)) < EPS) //если на диагонали 0
+            if (Math.abs(get(i, i)) < EPS) //если на диагонали 0
                 return true;
         }
         return false;
@@ -67,47 +74,47 @@ public class GaussSeidel {
     //переставить строки
     public boolean rearrangeRows() {
         int[] permutation = new int[n];
+        boolean[] isFree = new boolean[n];
+
         for (int i = 0; i < n; i++) {
-            permutation[i] = i;
+            isFree[i] = true;
         }
 
-        allPermutationRecursive(0, permutation);
+        getOrder(0, permutation, isFree);
+
         return areThereZerosOnDiagonal();
     }
 
     // Перебор всех возможных перестановок строк
-    private boolean allPermutationRecursive(int index, int[] elements) {
+    private boolean getOrder(int index, int[] elements, boolean[] free) {
         if (index == n - 1) {
+            for (int i = 0; i < n; i++) {
+                if (free[i]) {
+                    elements[index] = i;
+                    break;
+                }
+            }
+
             if (!(Math.abs(matrix[elements[index]][index]) < EPS)) {
                 order = elements;
                 return isSCC();
             }
         } else {
-            for (int i = index + 1; i < n; i++) {
-                if (Math.abs(matrix[elements[index]][index]) < EPS) {
-                    swap(elements, index, i);
-                    continue;
+            for (int i = 0; i < n; i++) {
+                if (free[i] && !(Math.abs(matrix[i][index]) < EPS)) {
+                    free[i] = false;
+                    elements[index] = i;
+
+                    if (getOrder(index + 1, elements, free)) {
+                        return true;
+                    }
+
+                    free[i] = true;
                 }
-
-                if (allPermutationRecursive(index + 1, elements)) {
-                    return true;
-                }
-
-                swap(elements, index, i);
-            }
-
-            if (!(Math.abs(matrix[elements[index]][index]) < EPS)) {
-                return allPermutationRecursive(index + 1, elements);
             }
         }
 
         return false;
-    }
-
-    private void swap(int[] input, int a, int b) {
-        int tmp = input[a];
-        input[a] = input[b];
-        input[b] = tmp;
     }
 
     // Проверка ДУС для матрицы
@@ -128,20 +135,11 @@ public class GaussSeidel {
 
     // Проверка достаточного условия сходимости для строки
     private int isRowSCC(int rowId, int diagonalId) {
-        double mainElement = 0.0;
-        double allElement = 0.0;
+        double element = Math.abs(matrix[rowId][diagonalId]);
 
-        for (int i = 0; i < n; i++) {
-            if (i == diagonalId) {
-                mainElement += Math.abs(matrix[rowId][i]);
-            } else {
-                allElement += Math.abs(matrix[rowId][i]);
-            }
-        }
-
-        if (mainElement > allElement + EPS) {
+        if (element > sums[rowId] - element + EPS) {
             return 0;                                   // ДУС выполнена в полном объёме для строки (>)
-        } else if (mainElement > allElement - EPS) {
+        } else if (element > sums[rowId] - element - EPS) {
             return 1;                                   // ДУС выполнена в неполном объёме для строки (>=)
         } else {
             return 2;                                   // ДУС невыполнена для строки (<)
@@ -150,10 +148,10 @@ public class GaussSeidel {
 
     //расчет решения
     public double[] resolve(double accuracy) {
-        double difference = iterate();
-        while (difference > accuracy) {
+        double difference;
+        do {
             difference = iterate();
-        }
+        } while (difference >= accuracy);
         return solution;
     }
 
@@ -180,7 +178,7 @@ public class GaussSeidel {
         double[] result = new double[n];
         double maxDifference = Double.MIN_VALUE;
         for (int i = 0; i < n; i++) {
-            result[i] = solveVariable(order[i]);
+            result[i] = solveVariable(i);
             double difference = Math.abs(result[i] - solution[i]);
             if (difference > maxDifference)
                 maxDifference = difference;
@@ -194,9 +192,9 @@ public class GaussSeidel {
         double sum = 0;
         for (int i = 0; i < n; i++) {
             if (i != index)
-                sum += matrix[index][i] * solution[i];
+                sum += get(index, i) * solution[i];
         }
-        return (matrix[index][m - 1] - sum) / matrix[index][index];
+        return (get(index, m - 1) - sum) / get(index, index);
     }
 
     //вывод решения
@@ -204,5 +202,6 @@ public class GaussSeidel {
         for (int i = 0; i < n; i++) {
             System.out.printf("%15.6E", solution[i]);
         }
+        System.out.println();
     }
 }
