@@ -12,6 +12,12 @@ public class Main {
         System.out.println("Система:");
         gaussSeidel.print();
 
+
+        // преобразовать (возвращаем 0 - невозможно, 1 - без ДУС, 2 - с ДУС)
+        // print()
+        // решаем, передав 0, 1 или 2 (0 - выводим сообщение, 1 - решаем с контролем, 2 - решаем без контроля)
+        // printSolution (если есть решение - решение, если нет решения - сообщение)
+
         if (gaussSeidel.areThereZerosOnDiagonal()) {
             if (gaussSeidel.rearrangeRows()) {
                 System.out.println("Невозможно решить итерационным методом");

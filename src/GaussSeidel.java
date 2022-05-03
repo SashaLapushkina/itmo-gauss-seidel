@@ -35,11 +35,6 @@ public class GaussSeidel {
             for (int j = 0; j < m; j++)
                 matrix[i][j] = Double.parseDouble(sn[j]);
         }
-        order = new int[n];
-        for (int i = 0; i < n; i++) {
-            order[i] = i;
-        }
-        sums = new double[n];
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
                 sums[i] += Math.abs(matrix[i][j]);
@@ -48,24 +43,26 @@ public class GaussSeidel {
         scan.close();
     }
 
-    private double get(int i, int j) {
-        return matrix[order[i]][j];
-    }
-
     //вывод системы на печать
     public void print() {
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) {
-                System.out.printf("%15.6E", get(i, j));
+                System.out.printf("%15.6E", matrix[getIndex(i)][j]);
             }
             System.out.println();
         }
     }
 
+    //берем индекс i-той строки
+    private int getIndex(int i) {
+        return order == null ? i : order[i];
+    }
+
     //проверяем нули на главной диагонали
     public boolean areThereZerosOnDiagonal() {
+        //TODO: инициализировать суммы
         for (int i = 0; i < n; i++) {
-            if (Math.abs(get(i, i)) < EPS) //если на диагонали 0
+            if (Math.abs(matrix[getIndex(i)][i]) < EPS) //если на диагонали 0
                 return true;
         }
         return false;
@@ -73,6 +70,7 @@ public class GaussSeidel {
 
     //переставить строки
     public boolean rearrangeRows() {
+        //TODO: три варианта: есть нули, нет нулей, вып ДУС
         int[] permutation = new int[n];
         boolean[] isFree = new boolean[n];
 
@@ -82,7 +80,7 @@ public class GaussSeidel {
 
         getOrder(0, permutation, isFree);
 
-        return areThereZerosOnDiagonal();
+        return order == null;
     }
 
     // Перебор всех возможных перестановок строк
@@ -95,13 +93,13 @@ public class GaussSeidel {
                 }
             }
 
-            if (!(Math.abs(matrix[elements[index]][index]) < EPS)) {
+            if ((Math.abs(matrix[elements[index]][index]) > EPS)) {
                 order = toNewArray(elements);
                 return isSCC();
             }
         } else {
             for (int i = 0; i < n; i++) {
-                if (free[i] && !(Math.abs(matrix[i][index]) < EPS)) {
+                if (free[i] && Math.abs(matrix[i][index]) > EPS) {
                     free[i] = false;
                     elements[index] = i;
 
@@ -117,6 +115,7 @@ public class GaussSeidel {
         return false;
     }
 
+    //скопировать массив в новый
     private int[] toNewArray(int[] array) {
         int[] newArray = new int[array.length];
         for (int i = 0; i < array.length; i++) {
@@ -129,7 +128,7 @@ public class GaussSeidel {
     public boolean isSCC() {
         boolean isSCC = false;
         for (int i = 0; i < n; i++) {
-            switch (isRowSCC(order[i], i)) {
+            switch (isRowSCC(getIndex(i), i)) {
                 case 0:
                     isSCC = true;
                 case 1:
@@ -166,8 +165,11 @@ public class GaussSeidel {
     public double[] resolve(double accuracy, int count, int limit) {
         int decreaseCount = 0;
         double difference = iterate();
+
         for (int i = 1; i < count; i++) {
+
             double newDifference = iterate();
+
             if (newDifference < difference) //проверяем монотонное убывание на каждом шаге
                 decreaseCount++;
             else
@@ -200,9 +202,9 @@ public class GaussSeidel {
         double sum = 0;
         for (int i = 0; i < n; i++) {
             if (i != index)
-                sum += get(index, i) * solution[i];
+                sum += matrix[getIndex(index)][i] * solution[i];
         }
-        return (get(index, m - 1) - sum) / get(index, index);
+        return (matrix[getIndex(index)][m - 1] - sum) / matrix[getIndex(index)][index];
     }
 
     //вывод решения
