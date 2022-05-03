@@ -96,7 +96,7 @@ public class GaussSeidel {
             }
 
             if (!(Math.abs(matrix[elements[index]][index]) < EPS)) {
-                order = elements;
+                order = toNewArray(elements);
                 return isSCC();
             }
         } else {
@@ -115,6 +115,14 @@ public class GaussSeidel {
         }
 
         return false;
+    }
+
+    private int[] toNewArray(int[] array) {
+        int[] newArray = new int[array.length];
+        for (int i = 0; i < array.length; i++) {
+            newArray[i] = array[i];
+        }
+        return newArray;
     }
 
     // Проверка ДУС для матрицы
