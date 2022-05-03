@@ -3,25 +3,34 @@ import java.io.FileNotFoundException;
 public class Main {
     public static void main(String[] args) {
         GaussSeidel gaussSeidel = new GaussSeidel();
-        try
-        {
+        try {
             gaussSeidel.init("input.txt");
-        }
-        catch (FileNotFoundException e)
-        {
+        } catch (FileNotFoundException e) {
             System.out.println("File Not Found!");
         }
 
         System.out.println("Система:");
         gaussSeidel.print();
-        boolean zero = gaussSeidel.checkZero();
-        if (zero) {
-            gaussSeidel.changeDiagonal(0);
-            System.out.println("Измененная система:");
-            gaussSeidel.print();
-        } else {
 
+        if (gaussSeidel.areThereZerosOnDiagonal()) {
+            if (gaussSeidel.rearrangeRows()) {
+                System.out.println("Невозможно решить итерационным методом");
+                return;
+            }
+            else {
+                System.out.println("Система после перестановок:");
+                gaussSeidel.print();
+            }
         }
-        gaussSeidel.resolve(zero);
+        if (gaussSeidel.isSCC())
+            gaussSeidel.resolve(1E-2);
+        else {
+            if (gaussSeidel.resolve(1E-2, 10, 2) == null) {
+                System.out.println("Метод расходится");
+                return;
+            }
+        }
+        System.out.print("Ответ: ");
+        gaussSeidel.printSolution();
     }
 }

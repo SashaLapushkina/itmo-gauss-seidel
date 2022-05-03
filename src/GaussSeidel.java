@@ -8,9 +8,9 @@ public class GaussSeidel {
     private int m; //кол-во коэффициентов (столбцов)
     private double[][] matrix; //коэффициенты
     private double[] solution;
-    private int count; //кол-во итераций
-    private final double accuracy = 1E-5;
-    private final int monotony = 5;
+    private int[] order;
+    private double[] sums;
+    private static final double EPS = 1E-3;
 
     //выделение памяти под массив
     private void create(int n, int m) {
@@ -27,90 +27,150 @@ public class GaussSeidel {
         String[] sn = pat.split(str);
         n = Integer.parseInt(sn[0]);
         m = n + 1;
-        count = Integer.parseInt(sn[1]);
         solution = new double[n];
         create(n, m);
-        int i, j;
-        for (i = 0; i < n; i++) {
+        for (int i = 0; i < n; i++) {
             str = scan.nextLine();
             sn = pat.split(str);
-            for (j = 0; j < m; j++)
+            for (int j = 0; j < m; j++)
                 matrix[i][j] = Double.parseDouble(sn[j]);
         }
+        order = new int[n];
+        for (int i = 0; i < n; i++) {
+            order[i] = i;
+        }
+        sums = new double[n];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                sums[i] += Math.abs(matrix[i][j]);
+            }
+        }
         scan.close();
+    }
+
+    private double get(int i, int j) {
+        return matrix[order[i]][j];
     }
 
     //вывод системы на печать
     public void print() {
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) {
-                System.out.printf("%15.6E", matrix[i][j]);
+                System.out.printf("%15.6E", get(i, j));
             }
             System.out.println();
         }
     }
 
-    //расчет решения
-    public boolean resolve(boolean SCC) {
-        System.out.println("Решения:");
-        double difference = iterate();
-        if (SCC) { //если ДУС выполняется
-            while (difference > accuracy) { //выполняем итерации, пока не добьемся нужной точности
-                difference = iterate();
-            }
-            return true;
-        } else { //если ДУС не выполняется
-            int decrease = 0;
-            for (int i = 1; i < count; i++) {
-                double newDifference = iterate();
-                if (newDifference > difference) { //проверяем монотонное убывание на каждом шаге
-                    decrease++;
-                } else {
-                    decrease = 0;
-                }
-                if (newDifference < accuracy) { //выходим из цикла, если добились нужной точности
-                    return true;
-                }
-                difference = newDifference;
-            }
-            if (decrease < monotony) { //если монотонность не замечена
-                System.out.println("Метод расходится:");
-                return false;
-            } else { //если есть монотонность
-                while (difference > accuracy) { //выполняем итерации, пока не добьемся нужной точности
-                    difference = iterate();
-                }
+    //проверяем нули на главной диагонали
+    public boolean areThereZerosOnDiagonal() {
+        for (int i = 0; i < n; i++) {
+            if (Math.abs(get(i, i)) < EPS) //если на диагонали 0
                 return true;
-            }
         }
+        return false;
     }
 
-    //проверка наличия 0 на главное диагонали
-    public boolean checkZero() {
-        int i = 0;
-        while (matrix[i][i] != 0 && i < n) {
-            i++;
+    //переставить строки
+    public boolean rearrangeRows() {
+        int[] permutation = new int[n];
+        boolean[] isFree = new boolean[n];
+
+        for (int i = 0; i < n; i++) {
+            isFree[i] = true;
         }
-        return i < n;
+
+        getOrder(0, permutation, isFree);
+
+        return areThereZerosOnDiagonal();
     }
 
-    //проверка матрицы на ДУС
-    public boolean checkSCC() {
-        boolean strictSCC = false;
-        boolean SCC = true;
-        int k = 0;
-        while (SCC && k < n) {
-            double sum = 0;
+    // Перебор всех возможных перестановок строк
+    private boolean getOrder(int index, int[] elements, boolean[] free) {
+        if (index == n - 1) {
             for (int i = 0; i < n; i++) {
-                if (i != k) {
-                    sum += matrix[k][i];
+                if (free[i]) {
+                    elements[index] = i;
+                    break;
                 }
             }
-            if (matrix[k][k] > sum) strictSCC = true; //выполнился строгий ДУС
-            if (sum > matrix[k][k]) SCC = false; //ДУС не выполнился
-            k++;
+
+            if (!(Math.abs(matrix[elements[index]][index]) < EPS)) {
+                order = elements;
+                return isSCC();
+            }
+        } else {
+            for (int i = 0; i < n; i++) {
+                if (free[i] && !(Math.abs(matrix[i][index]) < EPS)) {
+                    free[i] = false;
+                    elements[index] = i;
+
+                    if (getOrder(index + 1, elements, free)) {
+                        return true;
+                    }
+
+                    free[i] = true;
+                }
+            }
         }
-        return strictSCC & SCC;
+
+        return false;
+    }
+
+    // Проверка ДУС для матрицы
+    public boolean isSCC() {
+        boolean isSCC = false;
+        for (int i = 0; i < n; i++) {
+            switch (isRowSCC(order[i], i)) {
+                case 0:
+                    isSCC = true;
+                case 1:
+                    break;
+                case 2:
+                    return false;
+            }
+        }
+        return isSCC;
+    }
+
+    // Проверка достаточного условия сходимости для строки
+    private int isRowSCC(int rowId, int diagonalId) {
+        double element = Math.abs(matrix[rowId][diagonalId]);
+
+        if (element > sums[rowId] - element + EPS) {
+            return 0;                                   // ДУС выполнена в полном объёме для строки (>)
+        } else if (element > sums[rowId] - element - EPS) {
+            return 1;                                   // ДУС выполнена в неполном объёме для строки (>=)
+        } else {
+            return 2;                                   // ДУС невыполнена для строки (<)
+        }
+    }
+
+    //расчет решения
+    public double[] resolve(double accuracy) {
+        double difference;
+        do {
+            difference = iterate();
+        } while (difference >= accuracy);
+        return solution;
+    }
+
+    public double[] resolve(double accuracy, int count, int limit) {
+        int decreaseCount = 0;
+        double difference = iterate();
+        for (int i = 1; i < count; i++) {
+            double newDifference = iterate();
+            if (newDifference < difference) //проверяем монотонное убывание на каждом шаге
+                decreaseCount++;
+            else
+                decreaseCount = 0;
+            if (newDifference < accuracy) { //выходим из цикла, если добились нужной точности
+                return solution;
+            }
+            difference = newDifference;
+        }
+        if (decreaseCount < limit) return null;
+        else return resolve(accuracy);
     }
 
     //итерация поиска решения
@@ -119,13 +179,11 @@ public class GaussSeidel {
         double maxDifference = Double.MIN_VALUE;
         for (int i = 0; i < n; i++) {
             result[i] = solveVariable(i);
-            double difference = abs(result[i] - solution[i]);
+            double difference = Math.abs(result[i] - solution[i]);
             if (difference > maxDifference)
                 maxDifference = difference;
         }
         solution = result;
-        solution();
-        System.out.println();
         return maxDifference;
     }
 
@@ -134,34 +192,16 @@ public class GaussSeidel {
         double sum = 0;
         for (int i = 0; i < n; i++) {
             if (i != index)
-                sum += matrix[index][i] * solution[i];
+                sum += get(index, i) * solution[i];
         }
-        return (matrix[index][m - 1] - sum) / matrix[index][index];
-    }
-
-    //привести матрицу к диагональному преобладанию
-    public void changeDiagonal(int start) {
-
-    }
-
-    //модуль числа
-    private double abs(double a) {
-        return a >= 0 ? a : -a;
-    }
-
-    //поменять местами строки a и b
-    private void swap(int a, int b) {
-        if (a != b) {
-            double[] temp = matrix[a];
-            matrix[a] = matrix[b];
-            matrix[b] = temp;
-        }
+        return (get(index, m - 1) - sum) / get(index, index);
     }
 
     //вывод решения
-    public void solution() {
+    public void printSolution() {
         for (int i = 0; i < n; i++) {
             System.out.printf("%15.6E", solution[i]);
         }
+        System.out.println();
     }
 }
