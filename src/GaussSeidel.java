@@ -35,11 +35,6 @@ public class GaussSeidel {
             for (int j = 0; j < m; j++)
                 matrix[i][j] = Double.parseDouble(sn[j]);
         }
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                sums[i] += Math.abs(matrix[i][j]);
-            }
-        }
         scan.close();
     }
 
@@ -58,19 +53,41 @@ public class GaussSeidel {
         return order == null ? i : order[i];
     }
 
+    //решить систему
+    //2 - невозможно решить
+    //1 - метод сходиться
+    //0 - найдено решение
+    public int resolve(double accuracy, int count, int limit) {
+        switch(rearrangeRows(areThereZerosOnDiagonal())) {
+            default:
+                System.out.println("Система после перестановок:");
+                print();
+            case 2: return 2;
+            case 1: if (resolveWithControl(accuracy, count, limit)) return 1;
+            case 0: resolveWithoutControl(accuracy); return 0;
+        }
+    }
+
     //проверяем нули на главной диагонали
     public boolean areThereZerosOnDiagonal() {
-        //TODO: инициализировать суммы
+        sums = new double[n];
+        boolean result = false;
         for (int i = 0; i < n; i++) {
-            if (Math.abs(matrix[getIndex(i)][i]) < EPS) //если на диагонали 0
-                return true;
+            for (int j = 0; j < n; j++) {
+                sums[i] += Math.abs(matrix[i][j]);
+                if (i == j && Math.abs(matrix[getIndex(i)][j]) < EPS)
+                    result = true;//если на диагонали 0
+            }
         }
-        return false;
+        return result;
     }
 
     //переставить строки
-    public boolean rearrangeRows() {
-        //TODO: три варианта: есть нули, нет нулей, вып ДУС
+    //0 - выполнена ДУС
+    //1 - не выполнена ДУС
+    //2 - нет перестановки
+    public int rearrangeRows(boolean areThereZerosOnDiagonal) {
+        if (areThereZerosOnDiagonal) {
         int[] permutation = new int[n];
         boolean[] isFree = new boolean[n];
 
@@ -78,9 +95,12 @@ public class GaussSeidel {
             isFree[i] = true;
         }
 
-        getOrder(0, permutation, isFree);
+        if (getOrder(0, permutation, isFree)) return 0;
+        else return order == null ? 2 : 1;
 
-        return order == null;
+        } else {
+            return isSCC() ? 0 : 1;
+        }
     }
 
     // Перебор всех возможных перестановок строк
@@ -154,7 +174,7 @@ public class GaussSeidel {
     }
 
     //расчет решения
-    public double[] resolve(double accuracy) {
+    public double[] resolveWithoutControl(double accuracy) {
         double difference;
         do {
             difference = iterate();
@@ -162,7 +182,10 @@ public class GaussSeidel {
         return solution;
     }
 
-    public double[] resolve(double accuracy, int count, int limit) {
+    //расчет решения, ограниченный кол-вом итераций
+    //true - метод расходится
+    //false - метод сходится
+    public boolean resolveWithControl(double accuracy, int count, int limit) {
         int decreaseCount = 0;
         double difference = iterate();
 
@@ -175,12 +198,11 @@ public class GaussSeidel {
             else
                 decreaseCount = 0;
             if (newDifference < accuracy) { //выходим из цикла, если добились нужной точности
-                return solution;
+                return true;
             }
             difference = newDifference;
         }
-        if (decreaseCount < limit) return null;
-        else return resolve(accuracy);
+        return decreaseCount < limit;
     }
 
     //итерация поиска решения
@@ -208,10 +230,20 @@ public class GaussSeidel {
     }
 
     //вывод решения
-    public void printSolution() {
-        for (int i = 0; i < n; i++) {
-            System.out.printf("%15.6E", solution[i]);
+    public void printSolution(int code) {
+        switch(code) {
+            case 0:
+                System.out.println("Ответ:");
+                for (int i = 0; i < n; i++) {
+                    System.out.printf("%15.6E", solution[i]);
+                }
+                break;
+            case 1:
+                System.out.println("Невозможно решить итерационным методом");
+                break;
+            case 2:
+                System.out.println("Метод расходится");
+                break;
         }
-        System.out.println();
     }
 }
