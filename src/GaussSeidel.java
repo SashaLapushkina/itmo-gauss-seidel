@@ -11,6 +11,9 @@ public class GaussSeidel {
     private int[] order;
     private double[] sums;
     private static final double EPS = 1E-3;
+    private double accuracy = 1E-3; //точность
+    private int count = 10; //кол-во итераций
+    private int limit = 2; //количество итераций для схождения
 
     //выделение памяти под массив
     private void create(int n, int m) {
@@ -35,11 +38,6 @@ public class GaussSeidel {
             for (int j = 0; j < m; j++)
                 matrix[i][j] = Double.parseDouble(sn[j]);
         }
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                sums[i] += Math.abs(matrix[i][j]);
-            }
-        }
         scan.close();
     }
 
@@ -58,29 +56,59 @@ public class GaussSeidel {
         return order == null ? i : order[i];
     }
 
+    //решить систему
+    //2 - невозможно решить
+    //1 - метод сходиться
+    //0 - найдено решение
+    public double[] resolve(int code) {
+        switch (code) {
+            case 2:
+                System.out.println("Невозможно решить итерационным методом");
+                break;
+            case 1:
+                if (resolveWithControl()) {
+                    System.out.println("Метод расходится");
+                    break;
+                }
+            case 0:
+                return resolveWithoutControl();
+        }
+        return null;
+    }
+
     //проверяем нули на главной диагонали
     public boolean areThereZerosOnDiagonal() {
-        //TODO: инициализировать суммы
+        sums = new double[n];
+        boolean result = false;
         for (int i = 0; i < n; i++) {
-            if (Math.abs(matrix[getIndex(i)][i]) < EPS) //если на диагонали 0
-                return true;
+            for (int j = 0; j < n; j++) {
+                sums[i] += Math.abs(matrix[i][j]);
+                if (i == j && Math.abs(matrix[getIndex(i)][j]) < EPS)
+                    result = true;//если на диагонали 0
+            }
         }
-        return false;
+        return result;
     }
 
     //переставить строки
-    public boolean rearrangeRows() {
-        //TODO: три варианта: есть нули, нет нулей, вып ДУС
-        int[] permutation = new int[n];
-        boolean[] isFree = new boolean[n];
+    //0 - выполнена ДУС
+    //1 - не выполнена ДУС
+    //2 - нет перестановки
+    public int rearrangeRows() {
+        if (areThereZerosOnDiagonal()) {
+            int[] permutation = new int[n];
+            boolean[] isFree = new boolean[n];
 
-        for (int i = 0; i < n; i++) {
-            isFree[i] = true;
+            for (int i = 0; i < n; i++) {
+                isFree[i] = true;
+            }
+
+            if (getOrder(0, permutation, isFree)) return 0;
+            else return order == null ? 2 : 1;
+
+        } else {
+            return isSCC() ? 0 : 1;
         }
-
-        getOrder(0, permutation, isFree);
-
-        return order == null;
     }
 
     // Перебор всех возможных перестановок строк
@@ -154,7 +182,7 @@ public class GaussSeidel {
     }
 
     //расчет решения
-    public double[] resolve(double accuracy) {
+    public double[] resolveWithoutControl() {
         double difference;
         do {
             difference = iterate();
@@ -162,7 +190,10 @@ public class GaussSeidel {
         return solution;
     }
 
-    public double[] resolve(double accuracy, int count, int limit) {
+    //расчет решения, ограниченный кол-вом итераций
+    //true - метод расходится
+    //false - метод сходится
+    public boolean resolveWithControl() {
         int decreaseCount = 0;
         double difference = iterate();
 
@@ -175,12 +206,11 @@ public class GaussSeidel {
             else
                 decreaseCount = 0;
             if (newDifference < accuracy) { //выходим из цикла, если добились нужной точности
-                return solution;
+                return false;
             }
             difference = newDifference;
         }
-        if (decreaseCount < limit) return null;
-        else return resolve(accuracy);
+        return decreaseCount < limit;
     }
 
     //итерация поиска решения
@@ -209,9 +239,9 @@ public class GaussSeidel {
 
     //вывод решения
     public void printSolution() {
+        System.out.println("Ответ:");
         for (int i = 0; i < n; i++) {
             System.out.printf("%15.6E", solution[i]);
         }
-        System.out.println();
     }
 }
